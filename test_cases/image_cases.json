@@ -1,8 +1,9 @@
 {
   "meta": {
     "description": "文生图测试用例集 - 图像生成能力测评",
-    "total": 10,
-    "version": "1.0"
+    "total": 15,
+    "version": "2.0",
+    "last_updated": "2025-11-24"
   },
   "cases": [
     {
@@ -10,6 +11,8 @@
       "name": "全息投影会议室",
       "category": "未来科技",
       "difficulty": "高",
+      "tags": ["科技", "室内", "全息", "商务"],
+      "icon": "🖥️",
       "prompt": "A futuristic holographic conference room with floating transparent displays showing 3D data visualizations, soft blue and purple ambient lighting, sleek metallic furniture, people interacting with holographic interfaces, photorealistic, cinematic composition, 8K quality"
     },
     {
@@ -17,6 +20,8 @@
       "name": "赛博朋克街景",
       "category": "场景设计",
       "difficulty": "高",
+      "tags": ["赛博朋克", "城市", "夜景", "霓虹灯"],
+      "icon": "🌃",
       "prompt": "Cyberpunk city street at night, neon signs in Chinese and Japanese, rain-soaked streets reflecting colorful lights, flying vehicles in the background, street vendors with holographic menus, foggy atmosphere, cinematic lighting, highly detailed, 4K"
     },
     {
@@ -24,6 +29,8 @@
       "name": "古风少女",
       "category": "人物肖像",
       "difficulty": "高",
+      "tags": ["人物", "古风", "中国风", "传统服饰"],
+      "icon": "👘",
       "prompt": "Beautiful ancient Chinese girl in traditional hanfu dress, flowing silk fabric with floral patterns, elegant hair ornaments with jade and pearls, soft natural lighting, cherry blossoms in background, delicate facial features, oil painting style, high detail"
     },
     {
@@ -31,6 +38,8 @@
       "name": "太空站内部",
       "category": "未来科技",
       "difficulty": "高",
+      "tags": ["科幻", "太空", "室内", "失重"],
+      "icon": "🚀",
       "prompt": "Interior of a massive space station, large observation windows showing Earth and stars, astronauts floating in zero gravity, holographic control panels, advanced technology, realistic lighting from both interior and space, cinematic composition, photorealistic"
     },
     {
@@ -38,6 +47,8 @@
       "name": "魔法森林",
       "category": "奇幻场景",
       "difficulty": "中",
+      "tags": ["奇幻", "森林", "发光", "魔法"],
+      "icon": "🍄",
       "prompt": "Enchanted forest with giant glowing mushrooms, bioluminescent plants, floating magical particles in the air, mystical fog, ancient trees with twisted roots, fantasy atmosphere, vibrant colors, detailed vegetation, concept art style"
     },
     {
@@ -45,6 +56,8 @@
       "name": "产品设计-智能手表",
       "category": "产品设计",
       "difficulty": "中",
+      "tags": ["产品", "电子产品", "商业摄影", "科技"],
+      "icon": "⌚",
       "prompt": "Modern smartwatch product shot, sleek metallic design, OLED display showing fitness data, minimalist interface, floating against gradient background, studio lighting with soft shadows, professional photography, high resolution, premium quality"
     },
     {
@@ -52,6 +65,8 @@
       "name": "龙在云端",
       "category": "奇幻生物",
       "difficulty": "高",
+      "tags": ["神话", "中国龙", "天空", "史诗"],
+      "icon": "🐉",
       "prompt": "Majestic Chinese dragon flying through clouds, detailed scales with iridescent colors, golden horns and whiskers, dramatic sky with sun rays breaking through clouds, traditional Chinese art style mixed with photorealism, epic composition, 8K quality"
     },
     {
@@ -59,6 +74,8 @@
       "name": "现代建筑",
       "category": "建筑设计",
       "difficulty": "中",
+      "tags": ["建筑", "现代", "极简", "几何"],
+      "icon": "🏢",
       "prompt": "Modern minimalist architecture, white concrete building with large glass windows, geometric shapes, surrounded by reflecting pools, blue sky with few clouds, dramatic shadows, architectural photography style, high contrast, ultra-wide angle"
     },
     {
@@ -66,6 +83,8 @@
       "name": "美食摄影-拉面",
       "category": "美食摄影",
       "difficulty": "中",
+      "tags": ["美食", "日料", "特写", "商业摄影"],
+      "icon": "🍜",
       "prompt": "Japanese ramen bowl in close-up, steaming hot broth with rich tonkotsu color, perfectly cooked egg with runny yolk, fresh green onions, bamboo shoots, char siu pork slices, food photography with shallow depth of field, warm lighting, appetizing composition"
     },
     {
@@ -73,7 +92,54 @@
       "name": "水下世界",
       "category": "自然场景",
       "difficulty": "中",
+      "tags": ["海洋", "珊瑚", "自然", "野生动物"],
+      "icon": "🐠",
       "prompt": "Underwater coral reef scene, colorful tropical fish swimming among vibrant corals, sea turtles in the distance, sun rays penetrating water surface creating god rays effect, crystal clear turquoise water, National Geographic style, photorealistic, 4K quality"
+    },
+    {
+      "id": "I11",
+      "name": "赛博朋克街区",
+      "category": "未来科技",
+      "difficulty": "高",
+      "tags": ["赛博朋克", "雨夜", "机器人", "高科技"],
+      "icon": "🤖",
+      "prompt": "A futuristic cyberpunk cityscape at night with heavy rain falling. In the foreground, a female cyborg with translucent skin revealing glowing golden internal circuitry is repairing a hovering motorcycle. The street is illuminated by neon blue and pink holographic advertisements reflecting on the wet pavement. Towering skyscrapers disappear into volumetric fog. Cinematic lighting, 8k resolution, hyper-realistic, Unreal Engine 5 render style, detailed textures."
+    },
+    {
+      "id": "I12",
+      "name": "晨光中的秘境森林",
+      "category": "自然场景",
+      "difficulty": "中",
+      "tags": ["森林", "瀑布", "晨光", "奇幻"],
+      "icon": "🌲",
+      "prompt": "A breathtaking fantasy landscape featuring a cascading waterfall deep inside a lush, ancient forest. Giant trees with moss-covered roots. Rays of golden sunlight (God rays) piercing through the canopy, illuminating floating dust particles and colorful wildflowers. Crystal clear water with small fish visible. Style blending National Geographic photography with a touch of Thomas Kinkade warmth. Wide-angle shot, vibrant colors, high dynamic range."
+    },
+    {
+      "id": "I13",
+      "name": "沧桑渔夫特写",
+      "category": "人物肖像",
+      "difficulty": "高",
+      "tags": ["人物", "特写", "写实", "情感"],
+      "icon": "👨",
+      "prompt": "Extreme close-up portrait of an elderly fisherman with a weathered face, sunspots, and deep wrinkles. He has a thick, salt-and-pepper beard and is wearing a textured yellow raincoat. Water droplets are clinging to his skin. Intense gaze looking directly at the camera. Natural overcast lighting, sharp focus on the eyes, shallow depth of field (bokeh) with a blurry stormy ocean background. Shot on 35mm lens, f/1.8, hyper-realistic photography, skin porosity detail."
+    },
+    {
+      "id": "I14",
+      "name": "悬崖全景玻璃别墅",
+      "category": "建筑设计",
+      "difficulty": "中",
+      "tags": ["建筑", "豪宅", "海景", "现代"],
+      "icon": "🏠",
+      "prompt": "A masterpiece of parametric architecture, a white organic-shaped villa perched on a jagged cliffside overlooking the Mediterranean Sea. Floor-to-ceiling curved glass windows reflect the orange and purple hues of a dramatic sunset. An infinity pool blends seamlessly with the ocean horizon. Minimalist design, Zaha Hadid style. Architectural visualization, crisp lines, ambient occlusion, photorealistic, symmetry and balance."
+    },
+    {
+      "id": "I15",
+      "name": "奢华香水广告",
+      "category": "产品设计",
+      "difficulty": "简单",
+      "tags": ["产品", "奢侈品", "广告", "静物"],
+      "icon": "💎",
+      "prompt": "Professional product photography of a luxury perfume bottle made of faceted amber crystal glass with gold accents. The bottle is surrounded by floating jasmine petals and splashing water droplets frozen in mid-air. Soft pastel gradient background with a professional studio lighting setup, using rim lights to accentuate the curves and transparency of the glass. High definition, macro shot, commercial aesthetic, elegant and sophisticated."
     }
   ]
 }

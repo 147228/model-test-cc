@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI模型测评结果 - gemini-3-pro-preview / gemini-3-pro-image-preview | 夕小瑶科技</title>
+    <style>
+        :root {
+            --primary-color: #ff758c;
+            --secondary-color: #ff7eb3;
+            --accent-color: #726cf8;
+            --bg-light: #fdf2f8;
+            --bg-card: #ffffff;
+            --text-main: #374151;
+            --text-muted: #6b7280;
+            --gradient-brand: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%);
+            --gradient-bg: linear-gradient(180deg, #fdf2f8 0%, #fce7f3 100%);
+            --glass-bg: rgba(255, 255, 255, 0.8);
+            --glass-border: rgba(255, 192, 203, 0.3);
+            --shadow-soft: 0 10px 30px -10px rgba(255, 117, 140, 0.2);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--gradient-bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* 头部设计 */
+        header {
+            padding: 60px 0 40px;
+            text-align: center;
+            position: relative;
+        }
+
+        .brand-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            overflow: hidden;
+            box-shadow: 0 0 30px rgba(255, 117, 140, 0.3);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .brand-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #ec4899, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        /* 统计数据卡片 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 50px;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--glass-border);
+            padding: 20px;
+            border-radius: 16px;
+            text-align: center;
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--primary-color);
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* 分类标题 */
+        .section-title {
+            color: var(--text-main);
+            font-size: 1.8em;
+            margin: 50px 0 30px;
+            padding-left: 15px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        /* 画廊网格 */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 24px;
+            padding-bottom: 80px;
+        }
+
+        .gallery-item {
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            cursor: pointer;
+            background: var(--bg-card);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        .gallery-item:hover {
+            transform: scale(1.02) translateY(-5px);
+            z-index: 2;
+            box-shadow: 0 15px 40px rgba(255, 117, 140, 0.3);
+        }
+
+        .gallery-img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .gallery-item:hover .gallery-img {
+            transform: scale(1.1);
+        }
+
+        /* 图片遮罩信息 */
+        .item-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 30px 20px 20px;
+            background: linear-gradient(to top, rgba(15, 17, 26, 0.95), transparent);
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+        }
+
+        .gallery-item:hover .item-overlay {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .item-category {
+            font-size: 0.75rem;
+            color: var(--primary-color);
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .item-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        /* 卡片信息（用于文生文） */
+        .card-info {
+            padding: 20px;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 8px;
+        }
+
+        .card-prompt {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ff758c 0%, #ff7eb3 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            box-shadow: var(--shadow-soft);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text-main);
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--primary-color);
+        }
+
+        /* Lightbox */
+        .lightbox {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        .lightbox.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .lightbox-content {
+            max-width: 90%;
+            max-height: 85vh;
+            border-radius: 8px;
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            border: 1px solid var(--glass-border);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 30px;
+            right: 40px;
+            color: white;
+            font-size: 40px;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .close-btn:hover {
+            color: var(--primary-color);
+        }
+
+        /* 底部 */
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            border-top: 1px solid var(--glass-border);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        footer strong {
+            color: var(--primary-color);
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            h1 { font-size: 1.8rem; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .gallery-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="brand-avatar">
+                <img src="images/logo.png" alt="夕小瑶科技" onerror="this.style.display='none'">
+            </div>
+            <h1>AI模型测评结果</h1>
+            <p class="subtitle">gemini-3-pro-preview / gemini-3-pro-image-preview</p>
+            <p class="subtitle" style="font-size: 0.9em; opacity: 0.7;">生成时间: 2025-11-24T18:24:51</p>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-value">10</span>
+                    <span class="stat-label">文生文测试</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">15</span>
+                    <span class="stat-label">文生图测试</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">25</span>
+                    <span class="stat-label">总测试数</span>
+                </div>
+            </div>
+        </header>
+
+        <h2 class="section-title">文生文测评结果</h2><div class="gallery-grid">
+            <div class="gallery-item">
+                <div style="background: var(--gradient-brand); height: 200px; display: flex; align-items: center; justify-content: center;">
+                    <div style="font-size: 3em; opacity: 0.3;">📄</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title">机械花朵开合动画</div>
+                    <div class="card-prompt">请创建一个HTML文件，实现以下功能：使用SVG创建一朵机械风格的花朵，花朵有5片花瓣，点击时花瓣会打开/合拢，添加平滑的动画效果和机械齿轮装饰。要求单文件完整可运行。...</div>
+                    <div class="card-actions">
+                        <a href="../text/T01_机械花朵开合动画.html" target="_blank" class="btn btn-primary">查看演示</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div style="background: var(--gradient-brand); height: 200px; display: flex; align-items: center; justify-content: center;">
+                    <div style="font-size: 3em; opacity: 0.3;">📄</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title">3D立方体动画</div>
+                    <div class="card-prompt">请创建一个HTML文件，使用Three.js创建一个3D立方体，立方体可以通过鼠标拖拽旋转，添加光照效果和纹理。要求单文件完整可运行，包含完整的Three.js CDN引用。...</div>
+                    <div class="card-actions">
+                        <a href="../text/T02_3D立方体动画.html" target="_blank" class="btn btn-primary">查看演示</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div style="background: var(--gradient-brand); height: 200px; display: flex; align-items: center; justify-content: center;">
+                    <div style="font-size: 3em; opacity: 0.3;">📄</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title">俄罗斯方块游戏</div>
+                    <div class="card-prompt">请创建一个HTML文件，实现经典的俄罗斯方块游戏，包括：方块下落、旋转、消除、计分、等级提升。使用Canvas绘制，键盘控制，包含游戏结束判断。要求单文件完整可运行。...</div>
+                    <div class="card-actions">
+                        <a href="../text/T03_俄罗斯方块游戏.html" target="_blank" class="btn btn-primary">查看演示</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div style="background: var(--gradient-brand); height: 200px; display: flex; align-items: center; justify-content: center;">
+                    <div style="font-size: 3em; opacity: 0.3;">📄</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title">太阳系模拟器</div>
+                    <div class="card-prompt">请创建一个HTML文件，使用Canvas绘制一个简化的太阳系模型，包括太阳和8大行星，行星按正确的相对大小和轨道半径运行，可以暂停/继续，显示行星名称。要求单文件完整可运行。...</div>
+                    <div class="card-actions">
+                        <a href="../text/T04_太阳系模拟器.html" target="_blank" class="btn btn-primary">查看演示</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div style="background: var(--gradient-brand); height: 200px; display: flex; align-items: center; justify-content: center;">
+                    <div style="font-size: 3em; opacity: 0.3;">📄</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title">音乐可视化</div>
+                    <div class="card-prompt">请创建一个HTML文件，实现麦克风音频可视化效果，使用Web Audio API捕获麦克风输入，用Canvas绘制频谱柱状图，添加渐变色和动画效果。要求单文件完整可运行。...</div>
+                    <div class="card-actions">
+                        <a href="../text/T05_音乐可视化.html" target="_blank" class="btn btn-primary">查看演示</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div style="background: var(--gradient-brand); height: 200px; display: flex; align-items: center; justify-content: center;">
+                    <div style="font-size: 3em; opacity: 0.3;">📄</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title">粒子烟花效果</div>
+                    <div class="card-prompt">请创建一个HTML文件，实现粒子烟花效果，点击页面任意位置会在该位置爆发烟花，粒子有重力效果和渐隐消失。使用Canvas绘制，添加随机颜色。要求单文件完整可运行。...</div>
+                    <div class="card-actions">
+                        <a href="../text/T06_粒子烟花效果.html" target="_blank" class="btn btn-primary">查看演示</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div style="background: var(--gradient-brand); height: 200px; display: flex; align-items: center; justify-content: center;">
+                    <div style="font-size: 3em; opacity: 0.3;">📄</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title">计算器应用</div>
+                    <div class="card-prompt">请创建一个HTML文件，实现一个美观的计算器，支持基础四则运算、小数、清除、退格功能，使用现代化的UI设计，添加按键点击动画效果。要求单文件完整可运行。...</div>
+                    <div class="card-actions">
+                        <a href="../text/T07_计算器应用.html" target="_blank" class="btn btn-primary">查看演示</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div style="background: var(--gradient-brand); height: 200px; display: flex; align-items: center; justify-content: center;">
+                    <div style="font-size: 3em; opacity: 0.3;">📄</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title">时钟与倒计时</div>
+                    <div class="card-prompt">请创建一个HTML文件，实现一个数字时钟和倒计时器的组合，时钟显示当前时间，倒计时可以设置分钟和秒数，时间到时播放提示音并闪烁。要求单文件完整可运行。...</div>
+                    <div class="card-actions">
+                        <a href="../text/T08_时钟与倒计时.html" target="_blank" class="btn btn-primary">查看演示</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div style="background: var(--gradient-brand); height: 200px; display: flex; align-items: center; justify-content: center;">
+                    <div style="font-size: 3em; opacity: 0.3;">📄</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title">弹球碰撞游戏</div>
+                    <div class="card-prompt">请创建一个HTML文件，实现一个弹球碰撞游戏，多个彩色小球在画布内随机运动，碰到边界反弹，小球之间会碰撞并改变颜色，点击可以添加新球。要求单文件完整可运行。...</div>
+                    <div class="card-actions">
+                        
+                    </div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <div style="background: var(--gradient-brand); height: 200px; display: flex; align-items: center; justify-content: center;">
+                    <div style="font-size: 3em; opacity: 0.3;">📄</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-title">Markdown编辑器</div>
+                    <div class="card-prompt">请创建一个HTML文件，实现一个简单的Markdown编辑器，左侧输入Markdown文本，右侧实时预览渲染结果，支持标题、列表、粗体、斜体、代码块等基础语法。要求单文件完整可运行。...</div>
+                    <div class="card-actions">
+                        <a href="../text/T10_Markdown编辑器.html" target="_blank" class="btn btn-primary">查看演示</a>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+        <h2 class="section-title">文生图测评结果</h2><div class="gallery-grid">
+            <div class="gallery-item">
+                <img src="../image/I001_赛博朋克街区.jpg" alt="赛博朋克街区" class="gallery-img" onclick="openLightbox('../image/I001_赛博朋克街区.jpg')">
+                <div class="item-overlay">
+                    <span class="item-category">I001</span>
+                    <div class="item-title">赛博朋克街区</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I002_晨光中的秘境森林.jpg" alt="晨光中的秘境森林" class="gallery-img" onclick="openLightbox('../image/I002_晨光中的秘境森林.jpg')">
+                <div class="item-overlay">
+                    <span class="item-category">I002</span>
+                    <div class="item-title">晨光中的秘境森林</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I003_沧桑渔夫特写.jpg" alt="沧桑渔夫特写" class="gallery-img" onclick="openLightbox('../image/I003_沧桑渔夫特写.jpg')">
+                <div class="item-overlay">
+                    <span class="item-category">I003</span>
+                    <div class="item-title">沧桑渔夫特写</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I004_悬崖全景玻璃别墅.jpg" alt="悬崖全景玻璃别墅" class="gallery-img" onclick="openLightbox('../image/I004_悬崖全景玻璃别墅.jpg')">
+                <div class="item-overlay">
+                    <span class="item-category">I004</span>
+                    <div class="item-title">悬崖全景玻璃别墅</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I005_奢华香水广告.jpg" alt="奢华香水广告" class="gallery-img" onclick="openLightbox('../image/I005_奢华香水广告.jpg')">
+                <div class="item-overlay">
+                    <span class="item-category">I005</span>
+                    <div class="item-title">奢华香水广告</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I01_全息投影会议室.png" alt="全息投影会议室" class="gallery-img" onclick="openLightbox('../image/I01_全息投影会议室.png')">
+                <div class="item-overlay">
+                    <span class="item-category">I01</span>
+                    <div class="item-title">全息投影会议室</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I02_赛博朋克街景.png" alt="赛博朋克街景" class="gallery-img" onclick="openLightbox('../image/I02_赛博朋克街景.png')">
+                <div class="item-overlay">
+                    <span class="item-category">I02</span>
+                    <div class="item-title">赛博朋克街景</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I03_古风少女.png" alt="古风少女" class="gallery-img" onclick="openLightbox('../image/I03_古风少女.png')">
+                <div class="item-overlay">
+                    <span class="item-category">I03</span>
+                    <div class="item-title">古风少女</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I04_太空站内部.png" alt="太空站内部" class="gallery-img" onclick="openLightbox('../image/I04_太空站内部.png')">
+                <div class="item-overlay">
+                    <span class="item-category">I04</span>
+                    <div class="item-title">太空站内部</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I05_魔法森林.png" alt="魔法森林" class="gallery-img" onclick="openLightbox('../image/I05_魔法森林.png')">
+                <div class="item-overlay">
+                    <span class="item-category">I05</span>
+                    <div class="item-title">魔法森林</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I06_产品设计-智能手表.png" alt="产品设计-智能手表" class="gallery-img" onclick="openLightbox('../image/I06_产品设计-智能手表.png')">
+                <div class="item-overlay">
+                    <span class="item-category">I06</span>
+                    <div class="item-title">产品设计-智能手表</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I07_龙在云端.png" alt="龙在云端" class="gallery-img" onclick="openLightbox('../image/I07_龙在云端.png')">
+                <div class="item-overlay">
+                    <span class="item-category">I07</span>
+                    <div class="item-title">龙在云端</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I08_现代建筑.png" alt="现代建筑" class="gallery-img" onclick="openLightbox('../image/I08_现代建筑.png')">
+                <div class="item-overlay">
+                    <span class="item-category">I08</span>
+                    <div class="item-title">现代建筑</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I09_美食摄影-拉面.png" alt="美食摄影-拉面" class="gallery-img" onclick="openLightbox('../image/I09_美食摄影-拉面.png')">
+                <div class="item-overlay">
+                    <span class="item-category">I09</span>
+                    <div class="item-title">美食摄影-拉面</div>
+                </div>
+            </div>
+            
+            <div class="gallery-item">
+                <img src="../image/I10_水下世界.png" alt="水下世界" class="gallery-img" onclick="openLightbox('../image/I10_水下世界.png')">
+                <div class="item-overlay">
+                    <span class="item-category">I10</span>
+                    <div class="item-title">水下世界</div>
+                </div>
+            </div>
+            </div>
+
+        <footer>
+            <p>&copy; 2025 <strong>夕小瑶科技 AI 评测实验室</strong>. All Rights Reserved.</p>
+            <p style="margin-top: 5px; font-size: 0.8rem; opacity: 0.6;">低负担解码AI世界，硬核也可爱!</p>
+        </footer>
+    </div>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox">
+        <span class="close-btn" onclick="closeLightbox()">&times;</span>
+        <img src="" alt="" class="lightbox-content" id="lightbox-img">
+    </div>
+
+    <script>
+        function openLightbox(src) {
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('lightbox').classList.add('active');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+        }
+
+        document.getElementById('lightbox').addEventListener('click', function(e) {
+            if (e.target === this) closeLightbox();
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeLightbox();
+        });
+    </script>
+</body>
+</html>

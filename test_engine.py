@@ -125,11 +125,15 @@ class TestEngine:
 
         content = response["choices"][0]["message"]["content"]
 
-        # 保存响应
+        # 保存响应（包含所有测试案例元数据）
         output_file = self.output_dir / "text" / f"{case['id']}_{case['name']}.json"
         result = {
             "id": case["id"],
             "name": case["name"],
+            "category": case.get("category", "未分类"),
+            "difficulty": case.get("difficulty", "中"),
+            "tags": case.get("tags", []),
+            "icon": case.get("icon", "📄"),
             "prompt": case["prompt"],
             "response": content,
             "timestamp": datetime.now().isoformat(),
@@ -212,7 +216,7 @@ class TestEngine:
         # 提取并保存图片
         image_path = self.extract_and_save_image(content, case["id"], case["name"])
 
-        # 保存响应（移除base64图片数据，避免文件过大）
+        # 保存响应（移除base64图片数据，避免文件过大，并包含所有测试案例元数据）
         output_file = self.output_dir / "image" / f"{case['id']}_{case['name']}.json"
 
         # 从content中移除base64数据
@@ -221,6 +225,10 @@ class TestEngine:
         result = {
             "id": case["id"],
             "name": case["name"],
+            "category": case.get("category", "未分类"),
+            "difficulty": case.get("difficulty", "中"),
+            "tags": case.get("tags", []),
+            "icon": case.get("icon", "🖼️"),
             "prompt": case["prompt"],
             "response": clean_content,  # 保存清理后的内容
             "has_image": image_path is not None,
