@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+*.egg
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 输出文件（可选保留）
+output/text/*.json
+output/text/*.html
+output/image/*.json
+output/image/*.png
+output/image/*.jpg
+output/image/*.jpeg
+output/website/data.json
+
+# 配置文件（包含敏感信息）
+config.json
+
+# 日志
+*.log
+debug.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 临时文件
+*.tmp
+*.temp

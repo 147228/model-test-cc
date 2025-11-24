@@ -1,0 +1,7 @@
+{
+  "api_url": "https://yunwu.ai/v1",
+  "api_key": "请在这里填入你的API Key",
+  "text_model": "gemini-3-pro-preview",
+  "image_model": "gemini-3-pro-image-preview",
+  "max_threads": 10
+}
