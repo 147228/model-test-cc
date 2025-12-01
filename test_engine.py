@@ -354,14 +354,36 @@ class TestEngine:
         duration_seconds = api_result["duration_seconds"]
         retry_count = api_result["retry_count"]
 
-        # 安全提取内容
+        # 安全提取内容 - 支持多种响应格式
         content = ""
+        reasoning_content = ""
+        raw_response = ""
+
         try:
-            content = response_json["choices"][0]["message"]["content"]
+            message = response_json.get("choices", [{}])[0].get("message", {})
+
+            # 尝试获取常规content
+            content = message.get("content") or ""
+
+            # 尝试获取reasoning_content (deepseek-reasoner等推理模型)
+            reasoning_content = message.get("reasoning_content") or ""
+
+            # 如果content为空但reasoning_content有内容，使用reasoning_content
+            if not content and reasoning_content:
+                content = reasoning_content
+                self.log(f"    📝 [{case['id']}] 使用reasoning_content作为响应内容")
+
+            # 如果两者都为空，保存完整响应用于调试
+            if not content and not reasoning_content:
+                raw_response = json.dumps(response_json, ensure_ascii=False, indent=2)
+                self.log(f"    ⚠️ [{case['id']}] content和reasoning_content均为空，保存原始响应")
+                content = raw_response
+
         except (KeyError, IndexError, TypeError) as e:
             self.log(f"    ⚠️ [{case['id']}] 响应格式异常: {str(e)}")
             # 保存原始响应用于调试
-            content = json.dumps(response_json, ensure_ascii=False, indent=2)
+            raw_response = json.dumps(response_json, ensure_ascii=False, indent=2)
+            content = raw_response
 
         # 保存响应
         output_file = self.output_dir / "text" / f"{case['id']}_{case['name']}.json"
@@ -374,6 +396,7 @@ class TestEngine:
             "icon": case.get("icon", "📄"),
             "prompt": case["prompt"],
             "response": content,
+            "reasoning_content": reasoning_content if reasoning_content else None,
             "timestamp": datetime.now().isoformat(),
             "success": True,
             # 新增字段
@@ -382,6 +405,10 @@ class TestEngine:
             "retry_count": retry_count,
             "model": self.text_model
         }
+
+        # 如果有原始响应（说明解析异常），也保存
+        if raw_response:
+            result["raw_response"] = raw_response
 
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
@@ -397,7 +424,7 @@ class TestEngine:
             # 如果没有提取到HTML，保存原始响应到txt文件
             txt_file = self.output_dir / "text" / f"{case['id']}_{case['name']}_raw.txt"
             with open(txt_file, "w", encoding="utf-8") as f:
-                f.write(content)
+                f.write(content if content else raw_response if raw_response else "响应为空")
             result["txt_file"] = str(txt_file)
             result["html_extracted"] = False
             self.log(f"    ⚠️ [{case['id']}] 未能提取HTML，原始响应已保存到 {txt_file.name}")
@@ -530,13 +557,35 @@ class TestEngine:
         duration_seconds = api_result["duration_seconds"]
         retry_count = api_result["retry_count"]
 
-        # 安全提取内容
+        # 安全提取内容 - 支持多种响应格式
         content = ""
+        reasoning_content = ""
+        raw_response = ""
+
         try:
-            content = response_json["choices"][0]["message"]["content"]
+            message = response_json.get("choices", [{}])[0].get("message", {})
+
+            # 尝试获取常规content
+            content = message.get("content") or ""
+
+            # 尝试获取reasoning_content (deepseek-reasoner等推理模型)
+            reasoning_content = message.get("reasoning_content") or ""
+
+            # 如果content为空但reasoning_content有内容，使用reasoning_content
+            if not content and reasoning_content:
+                content = reasoning_content
+                self.log(f"    📝 [{case['id']}] 使用reasoning_content作为响应内容")
+
+            # 如果两者都为空，保存完整响应用于调试
+            if not content and not reasoning_content:
+                raw_response = json.dumps(response_json, ensure_ascii=False, indent=2)
+                self.log(f"    ⚠️ [{case['id']}] content和reasoning_content均为空，保存原始响应")
+                content = raw_response
+
         except (KeyError, IndexError, TypeError) as e:
             self.log(f"    ⚠️ [{case['id']}] 响应格式异常: {str(e)}")
-            content = json.dumps(response_json, ensure_ascii=False, indent=2)
+            raw_response = json.dumps(response_json, ensure_ascii=False, indent=2)
+            content = raw_response
 
         # 提取并保存图片
         image_path = self.extract_and_save_image(content, case["id"], case["name"])
@@ -554,6 +603,7 @@ class TestEngine:
             "icon": case.get("icon", "🖼️"),
             "prompt": case["prompt"],
             "response": clean_content,
+            "reasoning_content": reasoning_content[:500] + "..." if len(reasoning_content) > 500 else reasoning_content if reasoning_content else None,
             "has_image": image_path is not None,
             "timestamp": datetime.now().isoformat(),
             "success": True,
@@ -570,7 +620,7 @@ class TestEngine:
             # 如果没有提取到图片，保存原始响应到txt文件
             txt_file = self.output_dir / "image" / f"{case['id']}_{case['name']}_raw.txt"
             with open(txt_file, "w", encoding="utf-8") as f:
-                f.write(content)
+                f.write(content if content else raw_response if raw_response else "响应为空")
             result["txt_file"] = str(txt_file)
             self.log(f"    ⚠️ [{case['id']}] 未能提取图片，原始响应已保存到 {txt_file.name}")
 
