@@ -67,34 +67,59 @@ class EnhancedWebsiteGenerator:
         return simplified
 
     def collect_results(self, test_type):
-        """收集测试结果"""
+        """收集测试结果（只收集成功的案例）"""
         result_dir = self.output_dir / test_type
         results = []
+        skipped = []
 
         if not result_dir.exists():
             return results
 
         for json_file in result_dir.glob("*.json"):
+            # 跳过统计文件
+            if json_file.name.startswith("_"):
+                continue
+
             try:
                 with open(json_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
 
+                # 检查是否成功
+                if not data.get("success", True):
+                    skipped.append(data.get("id", json_file.stem))
+                    continue
+
                 base_name = json_file.stem
 
                 if test_type == "text":
+                    # 检查是否有HTML文件
                     html_file = result_dir / f"{base_name}.html"
                     if html_file.exists():
                         data["html_file"] = f"../text/{html_file.name}"
+                    else:
+                        # 没有HTML文件，跳过
+                        skipped.append(data.get("id", base_name))
+                        continue
                 else:
+                    # 检查是否有图片文件
+                    found_image = False
                     for ext in ["png", "jpg", "jpeg"]:
                         img_file = result_dir / f"{base_name}.{ext}"
                         if img_file.exists():
                             data["image_file"] = f"../image/{img_file.name}"
+                            found_image = True
                             break
+                    if not found_image:
+                        # 没有图片文件，跳过
+                        skipped.append(data.get("id", base_name))
+                        continue
 
                 results.append(data)
             except Exception as e:
                 print(f"读取结果失败 {json_file}: {e}")
+
+        if skipped:
+            print(f"[{test_type}] 跳过 {len(skipped)} 个失败/无输出的案例: {', '.join(skipped)}")
 
         return sorted(results, key=lambda x: x.get("id", ""))
 

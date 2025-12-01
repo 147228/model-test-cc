@@ -101,6 +101,10 @@ class AIModelTester:
         self.stop_btn = ttk.Button(btn_frame, text="停止", command=self.stop_test, state=tk.DISABLED)
         self.stop_btn.pack(side=tk.LEFT, padx=5)
 
+        # 重试失败按钮（初始隐藏）
+        self.retry_btn = ttk.Button(btn_frame, text="重试失败案例 (0)", command=self.retry_failed, state=tk.DISABLED)
+        self.retry_btn.pack(side=tk.LEFT, padx=5)
+
         ttk.Button(btn_frame, text="生成网站", command=self.generate_website).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="打开输出目录", command=self.open_output).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="清空日志", command=self.clear_log).pack(side=tk.RIGHT, padx=5)
@@ -212,27 +216,37 @@ class AIModelTester:
 
             total_tasks = 0
             completed = 0
+            failed_count = 0
 
             # 文生文测评
             if self.test_text.get() and self.is_running:
                 self.status_label.config(text="正在执行文生文测评...")
                 text_results = self.test_engine.run_text_tests()
                 completed += len(text_results)
-                self.log(f"文生文测评完成: {len(text_results)} 个案例")
+                text_failed = len([r for r in text_results if not r.get("success", True) or not r.get("html_file")])
+                failed_count += text_failed
+                self.log(f"文生文测评完成: {len(text_results)} 个案例，{text_failed} 个失败/未提取HTML")
 
             # 文生图测评
             if self.test_image.get() and self.is_running:
                 self.status_label.config(text="正在执行文生图测评...")
                 image_results = self.test_engine.run_image_tests()
                 completed += len(image_results)
-                self.log(f"文生图测评完成: {len(image_results)} 个案例")
+                image_failed = len([r for r in image_results if not r.get("success", True) or not r.get("has_image")])
+                failed_count += image_failed
+                self.log(f"文生图测评完成: {len(image_results)} 个案例，{image_failed} 个失败/未提取图片")
 
             if self.is_running:
                 self.log("=" * 50)
                 self.log(f"测评完成! 共完成 {completed} 个测试案例")
+                if failed_count > 0:
+                    self.log(f"⚠️ 有 {failed_count} 个案例失败或未成功提取内容")
                 self.log("=" * 50)
-                self.status_label.config(text=f"测评完成 - {completed} 个案例")
+                self.status_label.config(text=f"测评完成 - {completed} 个案例，{failed_count} 个失败")
                 self.progress_var.set(100)
+
+                # 更新重试按钮状态
+                self.root.after(0, lambda: self.update_retry_button(failed_count))
 
                 # 自动生成网站
                 self.log("正在生成展示网站...")
@@ -244,6 +258,60 @@ class AIModelTester:
         finally:
             self.is_running = False
             self.root.after(0, self.reset_buttons)
+
+    def update_retry_button(self, failed_count):
+        """更新重试按钮状态"""
+        if failed_count > 0:
+            self.retry_btn.config(text=f"重试失败案例 ({failed_count})", state=tk.NORMAL)
+        else:
+            self.retry_btn.config(text="重试失败案例 (0)", state=tk.DISABLED)
+
+    def retry_failed(self):
+        """重试失败的案例"""
+        if not self.test_engine:
+            messagebox.showwarning("警告", "请先运行一次测评")
+            return
+
+        self.is_running = True
+        self.start_btn.config(state=tk.DISABLED)
+        self.stop_btn.config(state=tk.NORMAL)
+        self.retry_btn.config(state=tk.DISABLED)
+
+        def do_retry():
+            try:
+                self.log("=" * 50)
+                self.log("开始重试失败案例")
+                self.log("=" * 50)
+
+                retry_count = self.test_engine.retry_failed_tests("all")
+
+                self.log("=" * 50)
+                self.log(f"重试完成! 成功重试 {retry_count} 个案例")
+                self.log("=" * 50)
+
+                # 重新统计失败数量
+                failed_count = 0
+                for r in self.test_engine.results.get("text", []):
+                    if not r.get("success", True) or not r.get("html_file"):
+                        failed_count += 1
+                for r in self.test_engine.results.get("image", []):
+                    if not r.get("success", True) or not r.get("has_image"):
+                        failed_count += 1
+
+                self.root.after(0, lambda: self.update_retry_button(failed_count))
+
+                # 重新生成网站
+                if retry_count > 0:
+                    self.log("正在重新生成展示网站...")
+                    self.generate_website_internal()
+
+            except Exception as e:
+                self.log(f"重试出错: {str(e)}")
+            finally:
+                self.is_running = False
+                self.root.after(0, self.reset_buttons)
+
+        threading.Thread(target=do_retry, daemon=True).start()
 
     def reset_buttons(self):
         """重置按钮状态"""
