@@ -56,3 +56,13 @@ Thumbs.db
 # Backup files
 *.bak
 *.old
+
+# Claude Code
+.claude/
+.trae/
+
+# Archives
+*.zip
+*.rar
+*.7z
+*.tar.gz

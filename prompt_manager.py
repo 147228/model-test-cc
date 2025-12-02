@@ -29,6 +29,7 @@ class PromptManager:
     def __init__(self, base_dir):
         self.base_dir = Path(base_dir)
         self.text_cases_file = self.base_dir / "test_cases" / "text_cases.json"
+        self.writing_cases_file = self.base_dir / "test_cases" / "writing_cases.json"
         self.image_cases_file = self.base_dir / "test_cases" / "image_cases.json"
         self.cache_file = self.base_dir / "test_cases" / "_prompt_cache.json"
         self.history_file = self.base_dir / "test_cases" / "_generation_history.json"
@@ -38,7 +39,12 @@ class PromptManager:
 
     def load_cases(self, test_type: str) -> Dict:
         """加载测试用例"""
-        file_path = self.text_cases_file if test_type == "text" else self.image_cases_file
+        if test_type == "text":
+            file_path = self.text_cases_file
+        elif test_type == "writing":
+            file_path = self.writing_cases_file
+        else:
+            file_path = self.image_cases_file
 
         if not file_path.exists():
             return {"meta": {}, "cases": []}
@@ -61,7 +67,12 @@ class PromptManager:
 
     def save_cases(self, test_type: str, data: Dict):
         """保存测试用例"""
-        file_path = self.text_cases_file if test_type == "text" else self.image_cases_file
+        if test_type == "text":
+            file_path = self.text_cases_file
+        elif test_type == "writing":
+            file_path = self.writing_cases_file
+        else:
+            file_path = self.image_cases_file
 
         # 确保目录存在
         file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -366,11 +377,19 @@ class PromptManager:
     def get_next_id(self, test_type: str) -> str:
         """获取下一个可用ID"""
         data = self.load_cases(test_type)
+
+        # 确定前缀
+        if test_type == "text":
+            prefix = "T"
+        elif test_type == "writing":
+            prefix = "W"
+        else:
+            prefix = "I"
+
         if not data["cases"]:
-            return "T01" if test_type == "text" else "I01"
+            return f"{prefix}01"
 
         # 提取所有ID的数字部分
-        prefix = "T" if test_type == "text" else "I"
         ids = []
         for c in data["cases"]:
             case_id = c.get("id", "")
@@ -397,12 +416,15 @@ class PromptManager:
     def get_stats(self) -> Dict:
         """获取提示词统计信息"""
         text_data = self.load_cases("text")
+        writing_data = self.load_cases("writing")
         image_data = self.load_cases("image")
 
         return {
             "text_count": len(text_data.get("cases", [])),
+            "writing_count": len(writing_data.get("cases", [])),
             "image_count": len(image_data.get("cases", [])),
             "text_last_updated": text_data.get("meta", {}).get("last_updated"),
+            "writing_last_updated": writing_data.get("meta", {}).get("last_updated"),
             "image_last_updated": image_data.get("meta", {}).get("last_updated"),
-            "total_count": len(text_data.get("cases", [])) + len(image_data.get("cases", []))
+            "total_count": len(text_data.get("cases", [])) + len(writing_data.get("cases", [])) + len(image_data.get("cases", []))
         }

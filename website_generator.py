@@ -18,7 +18,13 @@ class EnhancedWebsiteGenerator:
         """生成展示网站"""
         # 收集结果数据
         text_results = self.collect_results("text")
+        writing_results = self.collect_results("writing")
         image_results = self.collect_results("image")
+
+        # 加载统计数据
+        text_stats = self.load_stats("text")
+        writing_stats = self.load_stats("writing")
+        image_stats = self.load_stats("image")
 
         # 生成精简数据文件
         data = {
@@ -26,10 +32,17 @@ class EnhancedWebsiteGenerator:
                 "model": self.model_name,
                 "generated_at": datetime.now().isoformat(),
                 "total_text": len(text_results),
+                "total_writing": len(writing_results),
                 "total_image": len(image_results)
             },
             "text_results": self.simplify_results(text_results),
-            "image_results": self.simplify_results(image_results)
+            "writing_results": self.simplify_results(writing_results),
+            "image_results": self.simplify_results(image_results),
+            "stats": {
+                "text": text_stats,
+                "writing": writing_stats,
+                "image": image_stats
+            }
         }
 
         data_path = self.output_dir / "website" / "data.json"
@@ -63,8 +76,26 @@ class EnhancedWebsiteGenerator:
                 simple_r["html_file"] = r["html_file"]
             if "image_file" in r:
                 simple_r["image_file"] = r["image_file"]
+            if "txt_file" in r:
+                simple_r["txt_file"] = r["txt_file"]
+            if "response" in r:
+                # 截取响应内容用于预览
+                simple_r["response"] = r["response"][:500] if r.get("response") else ""
+            if "char_count" in r:
+                simple_r["char_count"] = r["char_count"]
             simplified.append(simple_r)
         return simplified
+
+    def load_stats(self, test_type):
+        """加载统计数据"""
+        stats_file = self.output_dir / test_type / "_stats.json"
+        if not stats_file.exists():
+            return {}
+        try:
+            with open(stats_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            return {}
 
     def collect_results(self, test_type):
         """收集测试结果（只收集成功的案例）"""
@@ -100,6 +131,14 @@ class EnhancedWebsiteGenerator:
                         # 没有HTML文件，跳过
                         skipped.append(data.get("id", base_name))
                         continue
+                elif test_type == "writing":
+                    # 文生文测试，检查txt文件
+                    txt_file = result_dir / f"{base_name}.txt"
+                    if txt_file.exists():
+                        data["txt_file"] = f"../writing/{txt_file.name}"
+                    # 文生文不强制要求txt文件，因为response已经在json中
+                    results.append(data)
+                    continue
                 else:
                     # 检查是否有图片文件
                     found_image = False
@@ -389,6 +428,35 @@ class EnhancedWebsiteGenerator:
             100% {{ transform: translate(20px, 20px); }}
         }}
 
+        /* 不同类型的渐变背景 */
+        .icon-bg.game {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }}
+
+        .icon-bg.tool {{
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }}
+
+        .icon-bg.animation {{
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }}
+
+        .icon-bg.graphics {{
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }}
+
+        .icon-bg.audio {{
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }}
+
+        .icon-bg.ui {{
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        }}
+
+        .icon-bg.data {{
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+        }}
+
         .icon-emoji {{
             font-size: 5em;
             position: relative;
@@ -627,6 +695,10 @@ class EnhancedWebsiteGenerator:
             <div class="stats-grid">
                 <div class="stat-card">
                     <span class="stat-value">{data['meta']['total_text']}</span>
+                    <span class="stat-label">代码生成测试</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value">{data['meta'].get('total_writing', 0)}</span>
                     <span class="stat-label">文生文测试</span>
                 </div>
                 <div class="stat-card">
@@ -634,11 +706,14 @@ class EnhancedWebsiteGenerator:
                     <span class="stat-label">文生图测试</span>
                 </div>
                 <div class="stat-card">
-                    <span class="stat-value">{data['meta']['total_text'] + data['meta']['total_image']}</span>
+                    <span class="stat-value">{data['meta']['total_text'] + data['meta'].get('total_writing', 0) + data['meta']['total_image']}</span>
                     <span class="stat-label">总测试数</span>
                 </div>
             </div>
         </header>
+
+        <!-- 统计数据可视化 -->
+        {self.generate_stats_section(data.get('stats', {}))}
 
         <!-- 搜索和筛选栏 -->
         <div class="filter-bar">
@@ -651,7 +726,8 @@ class EnhancedWebsiteGenerator:
 
             <div class="filter-buttons">
                 <button class="filter-btn active" data-filter="all">全部</button>
-                <button class="filter-btn" data-filter="text">文生文</button>
+                <button class="filter-btn" data-filter="text">代码生成</button>
+                <button class="filter-btn" data-filter="writing">文生文</button>
                 <button class="filter-btn" data-filter="image">文生图</button>
             </div>
 
@@ -666,14 +742,25 @@ class EnhancedWebsiteGenerator:
             </div>
         </div>
 
-        <!-- 文生文结果 -->
+        <!-- 代码生成结果 -->
         <div id="textSection">
             <h2 class="section-title">
-                <span>文生文测评结果</span>
+                <span>代码生成测评结果</span>
                 <span class="result-count" id="textCount">{len(data['text_results'])} 个案例</span>
             </h2>
             <div class="gallery-grid" id="textGallery">
                 {self.generate_text_cards(data['text_results'])}
+            </div>
+        </div>
+
+        <!-- 文生文结果 -->
+        <div id="writingSection">
+            <h2 class="section-title">
+                <span>文生文测评结果</span>
+                <span class="result-count" id="writingCount">{len(data.get('writing_results', []))} 个案例</span>
+            </h2>
+            <div class="gallery-grid" id="writingGallery">
+                {self.generate_writing_cards(data.get('writing_results', []))}
             </div>
         </div>
 
@@ -705,6 +792,22 @@ class EnhancedWebsiteGenerator:
     <div class="lightbox" id="lightbox">
         <span class="close-btn" onclick="closeLightbox()">&times;</span>
         <img src="" alt="" class="lightbox-content" id="lightbox-img">
+    </div>
+
+    <!-- Writing Modal -->
+    <div class="lightbox" id="writingModal">
+        <span class="close-btn" onclick="closeWritingModal()">&times;</span>
+        <div style="background: white; max-width: 800px; max-height: 85vh; overflow-y: auto; border-radius: 16px; padding: 30px; margin: 20px;">
+            <h2 id="writingModalTitle" style="margin-bottom: 20px; color: var(--text-main);"></h2>
+            <div style="background: var(--bg-light); padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                <strong style="color: var(--primary-color);">提示词：</strong>
+                <p id="writingModalPrompt" style="margin-top: 8px; color: var(--text-muted);"></p>
+            </div>
+            <div style="border-top: 1px solid var(--glass-border); padding-top: 20px;">
+                <strong style="color: var(--primary-color);">模型响应：</strong>
+                <div id="writingModalContent" style="margin-top: 10px; line-height: 1.8; color: var(--text-main);"></div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -740,9 +843,10 @@ class EnhancedWebsiteGenerator:
         function filterResults() {{
             const searchTerm = document.getElementById('searchBox').value.toLowerCase();
             let visibleTextCount = 0;
+            let visibleWritingCount = 0;
             let visibleImageCount = 0;
 
-            // 筛选文生文
+            // 筛选代码生成
             document.querySelectorAll('#textGallery .gallery-item').forEach(item => {{
                 const matchesSearch = !searchTerm ||
                     item.dataset.name.toLowerCase().includes(searchTerm) ||
@@ -755,6 +859,24 @@ class EnhancedWebsiteGenerator:
                 if (matchesSearch && matchesFilter && matchesDifficulty) {{
                     item.style.display = '';
                     visibleTextCount++;
+                }} else {{
+                    item.style.display = 'none';
+                }}
+            }});
+
+            // 筛选文生文
+            document.querySelectorAll('#writingGallery .gallery-item').forEach(item => {{
+                const matchesSearch = !searchTerm ||
+                    item.dataset.name.toLowerCase().includes(searchTerm) ||
+                    item.dataset.tags.toLowerCase().includes(searchTerm) ||
+                    item.dataset.id.toLowerCase().includes(searchTerm);
+
+                const matchesFilter = currentFilter === 'all' || currentFilter === 'writing';
+                const matchesDifficulty = currentDifficulty === 'all' || item.dataset.difficulty === currentDifficulty;
+
+                if (matchesSearch && matchesFilter && matchesDifficulty) {{
+                    item.style.display = '';
+                    visibleWritingCount++;
                 }} else {{
                     item.style.display = 'none';
                 }}
@@ -780,16 +902,19 @@ class EnhancedWebsiteGenerator:
 
             // 更新计数
             document.getElementById('textCount').textContent = `${{visibleTextCount}} 个案例`;
+            document.getElementById('writingCount').textContent = `${{visibleWritingCount}} 个案例`;
             document.getElementById('imageCount').textContent = `${{visibleImageCount}} 个案例`;
 
             // 显示/隐藏区域
             document.getElementById('textSection').style.display =
                 (currentFilter === 'all' || currentFilter === 'text') && visibleTextCount > 0 ? '' : 'none';
+            document.getElementById('writingSection').style.display =
+                (currentFilter === 'all' || currentFilter === 'writing') && visibleWritingCount > 0 ? '' : 'none';
             document.getElementById('imageSection').style.display =
                 (currentFilter === 'all' || currentFilter === 'image') && visibleImageCount > 0 ? '' : 'none';
 
             // 显示空状态
-            const totalVisible = visibleTextCount + visibleImageCount;
+            const totalVisible = visibleTextCount + visibleWritingCount + visibleImageCount;
             document.getElementById('emptyState').style.display = totalVisible === 0 ? 'block' : 'none';
         }}
 
@@ -814,20 +939,159 @@ class EnhancedWebsiteGenerator:
             document.getElementById('lightbox').classList.remove('active');
         }}
 
+        // Writing Modal功能
+        function showWritingModal(id, title, prompt, content) {{
+            document.getElementById('writingModalTitle').textContent = title;
+            document.getElementById('writingModalPrompt').textContent = prompt;
+            document.getElementById('writingModalContent').innerHTML = content;
+            document.getElementById('writingModal').classList.add('active');
+        }}
+
+        function closeWritingModal() {{
+            document.getElementById('writingModal').classList.remove('active');
+        }}
+
+        document.getElementById('writingModal').addEventListener('click', function(e) {{
+            if (e.target === this) closeWritingModal();
+        }});
+
         document.getElementById('lightbox').addEventListener('click', function(e) {{
             if (e.target === this) closeLightbox();
         }});
 
         document.addEventListener('keydown', function(e) {{
-            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'Escape') {{
+                closeLightbox();
+                closeWritingModal();
+            }}
         }});
     </script>
 </body>
 </html>'''
         return html
 
+    def generate_stats_section(self, stats):
+        """生成统计数据可视化部分"""
+        text_stats = stats.get('text', {})
+        writing_stats = stats.get('writing', {})
+        image_stats = stats.get('image', {})
+
+        # 计算平均值
+        avg_speed = []
+        if text_stats.get('avg_tokens_per_second', 0) > 0:
+            avg_speed.append(text_stats['avg_tokens_per_second'])
+        if writing_stats.get('avg_tokens_per_second', 0) > 0:
+            avg_speed.append(writing_stats['avg_tokens_per_second'])
+        if image_stats.get('avg_tokens_per_second', 0) > 0:
+            avg_speed.append(image_stats['avg_tokens_per_second'])
+        overall_avg_speed = sum(avg_speed) / len(avg_speed) if avg_speed else 0
+
+        html = f'''
+        <div style="background: white; border-radius: 16px; padding: 30px; margin-bottom: 40px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+            <h2 style="font-size: 1.5rem; margin-bottom: 25px; color: var(--text-main); border-left: 4px solid var(--primary-color); padding-left: 15px;">
+                📊 性能统计数据
+            </h2>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <!-- 代码生成统计 -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px;">🔨 代码生成</div>
+                    <div style="font-size: 1.8rem; font-weight: 700; margin-bottom: 8px;">{text_stats.get('avg_tokens_per_second', 0):.1f} <span style="font-size: 0.8rem;">tok/s</span></div>
+                    <div style="font-size: 0.85rem; opacity: 0.8;">平均响应: {text_stats.get('avg_time_per_case', 0):.1f}s</div>
+                    <div style="font-size: 0.85rem; opacity: 0.8;">成功率: {(text_stats.get('success_count', 0) / text_stats.get('total_cases', 1) * 100) if text_stats.get('total_cases', 0) > 0 else 0:.1f}%</div>
+                </div>
+
+                <!-- 文生文统计 -->
+                <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px;">✍️ 文生文</div>
+                    <div style="font-size: 1.8rem; font-weight: 700; margin-bottom: 8px;">{writing_stats.get('avg_tokens_per_second', 0):.1f} <span style="font-size: 0.8rem;">tok/s</span></div>
+                    <div style="font-size: 0.85rem; opacity: 0.8;">平均响应: {writing_stats.get('avg_time_per_case', 0):.1f}s</div>
+                    <div style="font-size: 0.85rem; opacity: 0.8;">成功率: {(writing_stats.get('success_count', 0) / writing_stats.get('total_cases', 1) * 100) if writing_stats.get('total_cases', 0) > 0 else 0:.1f}%</div>
+                </div>
+
+                <!-- 文生图统计 -->
+                <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px;">🎨 文生图</div>
+                    <div style="font-size: 1.8rem; font-weight: 700; margin-bottom: 8px;">{image_stats.get('avg_tokens_per_second', 0):.1f} <span style="font-size: 0.8rem;">tok/s</span></div>
+                    <div style="font-size: 0.85rem; opacity: 0.8;">平均响应: {image_stats.get('avg_time_per_case', 0):.1f}s</div>
+                    <div style="font-size: 0.85rem; opacity: 0.8;">成功率: {(image_stats.get('success_count', 0) / image_stats.get('total_cases', 1) * 100) if image_stats.get('total_cases', 0) > 0 else 0:.1f}%</div>
+                </div>
+
+                <!-- 综合统计 -->
+                <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); padding: 20px; border-radius: 12px; color: white;">
+                    <div style="font-size: 0.9rem; opacity: 0.9; margin-bottom: 8px;">⚡ 综合性能</div>
+                    <div style="font-size: 1.8rem; font-weight: 700; margin-bottom: 8px;">{overall_avg_speed:.1f} <span style="font-size: 0.8rem;">tok/s</span></div>
+                    <div style="font-size: 0.85rem; opacity: 0.8;">总用时: {text_stats.get('total_time_seconds', 0) + writing_stats.get('total_time_seconds', 0) + image_stats.get('total_time_seconds', 0):.1f}s</div>
+                    <div style="font-size: 0.85rem; opacity: 0.8;">总tokens: {text_stats.get('total_tokens', {}).get('total_tokens', 0) + writing_stats.get('total_tokens', {}).get('total_tokens', 0) + image_stats.get('total_tokens', {}).get('total_tokens', 0):,}</div>
+                </div>
+            </div>
+
+            <!-- Token使用详情 -->
+            <div style="background: var(--bg-light); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                <h3 style="font-size: 1.1rem; margin-bottom: 15px; color: var(--text-main);">💎 Token使用统计</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">输入Tokens</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary-color);">{text_stats.get('total_tokens', {}).get('prompt_tokens', 0) + writing_stats.get('total_tokens', {}).get('prompt_tokens', 0) + image_stats.get('total_tokens', {}).get('prompt_tokens', 0):,}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">输出Tokens</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary-color);">{text_stats.get('total_tokens', {}).get('completion_tokens', 0) + writing_stats.get('total_tokens', {}).get('completion_tokens', 0) + image_stats.get('total_tokens', {}).get('completion_tokens', 0):,}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">平均输出/案例</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary-color);">{((text_stats.get('avg_output_tokens_per_case', 0) + writing_stats.get('avg_output_tokens_per_case', 0) + image_stats.get('avg_output_tokens_per_case', 0)) / 3):.0f}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px;">总重试次数</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: var(--primary-color);">{text_stats.get('retry_count', 0) + writing_stats.get('retry_count', 0) + image_stats.get('retry_count', 0)}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 可视化图表 -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <!-- 速度对比图 -->
+                <div style="background: white; padding: 20px; border: 1px solid var(--glass-border); border-radius: 12px;">
+                    <h4 style="font-size: 1rem; margin-bottom: 15px; color: var(--text-main);">生成速度对比 (tok/s)</h4>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        {self.generate_bar('代码生成', text_stats.get('avg_tokens_per_second', 0), overall_avg_speed if overall_avg_speed > 0 else 100, '#667eea')}
+                        {self.generate_bar('文生文', writing_stats.get('avg_tokens_per_second', 0), overall_avg_speed if overall_avg_speed > 0 else 100, '#f5576c')}
+                        {self.generate_bar('文生图', image_stats.get('avg_tokens_per_second', 0), overall_avg_speed if overall_avg_speed > 0 else 100, '#00f2fe')}
+                    </div>
+                </div>
+
+                <!-- 成功率对比图 -->
+                <div style="background: white; padding: 20px; border: 1px solid var(--glass-border); border-radius: 12px;">
+                    <h4 style="font-size: 1rem; margin-bottom: 15px; color: var(--text-main);">测试成功率 (%)</h4>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        {self.generate_bar('代码生成', (text_stats.get('success_count', 0) / text_stats.get('total_cases', 1) * 100) if text_stats.get('total_cases', 0) > 0 else 0, 100, '#10b981')}
+                        {self.generate_bar('文生文', (writing_stats.get('success_count', 0) / writing_stats.get('total_cases', 1) * 100) if writing_stats.get('total_cases', 0) > 0 else 0, 100, '#10b981')}
+                        {self.generate_bar('文生图', (image_stats.get('success_count', 0) / image_stats.get('total_cases', 1) * 100) if image_stats.get('total_cases', 0) > 0 else 0, 100, '#10b981')}
+                    </div>
+                </div>
+            </div>
+        </div>
+        '''
+        return html
+
+    def generate_bar(self, label, value, max_value, color):
+        """生成单个条形图"""
+        percentage = (value / max_value * 100) if max_value > 0 else 0
+        return f'''
+        <div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <span style="font-size: 0.85rem; color: var(--text-muted);">{label}</span>
+                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">{value:.1f}</span>
+            </div>
+            <div style="background: #e5e7eb; height: 8px; border-radius: 4px; overflow: hidden;">
+                <div style="background: {color}; height: 100%; width: {percentage:.1f}%; transition: width 1s ease;"></div>
+            </div>
+        </div>
+        '''
+
     def generate_text_cards(self, results):
-        """生成文生文卡片（带图标）"""
+        """生成代码生成卡片（带图标）"""
         cards = []
         for r in results:
             icon = r.get('icon', '📄')
@@ -836,13 +1100,16 @@ class EnhancedWebsiteGenerator:
             tags = r.get('tags', [])
             tags_html = ''.join([f'<span class="tag">{tag}</span>' for tag in tags[:3]])
 
+            # 根据分类选择背景样式
+            bg_class = self.get_category_bg_class(category)
+
             html_btn = ""
             if r.get("html_file"):
                 html_btn = f'<a href="{r["html_file"]}" target="_blank" class="btn btn-primary">查看演示</a>'
 
             card = f'''
             <div class="gallery-item" data-name="{r.get('name', '')}" data-id="{r.get('id', '')}" data-tags="{' '.join(tags)}" data-difficulty="{difficulty}">
-                <div class="icon-bg">
+                <div class="icon-bg {bg_class}">
                     <div class="icon-emoji">{icon}</div>
                 </div>
                 <div class="card-info">
@@ -855,6 +1122,87 @@ class EnhancedWebsiteGenerator:
                     <div class="card-prompt">{r.get('prompt', '')[:100]}...</div>
                     <div class="card-actions">
                         {html_btn}
+                    </div>
+                </div>
+            </div>
+            '''
+            cards.append(card)
+        return "".join(cards)
+
+    def get_category_bg_class(self, category):
+        """根据分类返回背景样式类"""
+        category_map = {
+            '交互游戏': 'game',
+            '实用工具': 'tool',
+            '动画效果': 'animation',
+            '3D图形': 'graphics',
+            '视觉代码生成': 'graphics',
+            '视觉效果': 'graphics',
+            '音频可视化': 'audio',
+            '多媒体': 'audio',
+            'UI布局': 'ui',
+            '数据可视化': 'data',
+            '算法/模拟': 'data',
+            '科学模拟': 'data',
+            # 文生文分类
+            '新闻写作': 'tool',
+            '营销文案': 'ui',
+            '技术写作': 'data',
+            '创意写作': 'animation',
+            '商务写作': 'tool',
+            '知识解答': 'data',
+            '演讲写作': 'ui',
+            '说明文写作': 'tool',
+            '评论写作': 'graphics',
+            '应用写作': 'tool',
+            '科普写作': 'data',
+            '产品写作': 'ui',
+            '议论写作': 'game',
+            '叙事写作': 'animation',
+        }
+        return category_map.get(category, '')
+
+    def generate_writing_cards(self, results):
+        """生成文生文卡片（写作能力测试）"""
+        cards = []
+        for r in results:
+            icon = r.get('icon', '📝')
+            difficulty = r.get('difficulty', '中')
+            category = r.get('category', '未分类')
+            tags = r.get('tags', [])
+            tags_html = ''.join([f'<span class="tag">{tag}</span>' for tag in tags[:3]])
+
+            # 根据分类选择背景样式
+            bg_class = self.get_category_bg_class(category)
+
+            # 获取响应内容预览
+            response_preview = r.get('response', '')[:200] if r.get('response') else ''
+            response_preview = response_preview.replace('<', '&lt;').replace('>', '&gt;').replace('\n', ' ').replace('"', '&quot;')
+            if len(r.get('response', '')) > 200:
+                response_preview += '...'
+
+            # 完整响应用于模态框显示
+            full_response = r.get('response', '').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>').replace('"', '&quot;')
+
+            # 字数统计
+            char_count = r.get('char_count', len(r.get('response', '')))
+
+            card = f'''
+            <div class="gallery-item" data-name="{r.get('name', '')}" data-id="{r.get('id', '')}" data-tags="{' '.join(tags)}" data-difficulty="{difficulty}">
+                <div class="icon-bg {bg_class}" style="height: 150px;">
+                    <div class="icon-emoji" style="font-size: 4em;">{icon}</div>
+                </div>
+                <div class="card-info">
+                    <div class="card-header">
+                        <div class="card-title">{r.get('name', '未命名')}</div>
+                        <span class="difficulty-badge difficulty-{difficulty}">{difficulty}</span>
+                    </div>
+                    <div class="card-category">📁 {category} | 📊 {char_count} 字</div>
+                    <div class="card-tags">{tags_html}</div>
+                    <div class="card-prompt" style="font-size: 0.8rem; color: #666; margin-bottom: 8px; max-height: 40px; overflow: hidden;"><strong>提示:</strong> {r.get('prompt', '')[:80]}...</div>
+                    <div class="card-prompt" style="background: #f8f9fa; padding: 10px; border-radius: 8px; font-size: 0.85rem; max-height: 100px; overflow: hidden;">{response_preview}</div>
+                    <div class="card-actions" style="margin-top: 10px;">
+                        <button class="btn btn-primary" onclick="showWritingModal('{r.get('id', '')}', '{r.get('name', '').replace(chr(39), chr(92)+chr(39))}', '{r.get('prompt', '').replace(chr(39), chr(92)+chr(39)).replace(chr(10), ' ')[:200]}', `{full_response}`)">查看详情</button>
                     </div>
                 </div>
             </div>
