@@ -1163,46 +1163,96 @@ class EnhancedWebsiteGenerator:
         return category_map.get(category, '')
 
     def generate_writing_cards(self, results):
-        """生成文生文卡片（写作能力测试）"""
+        """生成文生文卡片（优化版 - 更美观完整）"""
         cards = []
         for r in results:
             icon = r.get('icon', '📝')
             difficulty = r.get('difficulty', '中')
             category = r.get('category', '未分类')
             tags = r.get('tags', [])
-            tags_html = ''.join([f'<span class="tag">{tag}</span>' for tag in tags[:3]])
+            tags_html = ''.join([f'<span class="tag">{tag}</span>' for tag in tags[:4]])
 
             # 根据分类选择背景样式
             bg_class = self.get_category_bg_class(category)
 
-            # 获取响应内容预览
-            response_preview = r.get('response', '')[:200] if r.get('response') else ''
-            response_preview = response_preview.replace('<', '&lt;').replace('>', '&gt;').replace('\n', ' ').replace('"', '&quot;')
-            if len(r.get('response', '')) > 200:
-                response_preview += '...'
+            # 获取响应内容预览（更长的预览）
+            response_preview = r.get('response', '')[:350] if r.get('response') else ''
+            response_preview_html = response_preview.replace('<', '&lt;').replace('>', '&gt;').replace('\n', ' ').replace('"', '&quot;')
+            if len(r.get('response', '')) > 350:
+                response_preview_html += '...'
 
-            # 完整响应用于模态框显示
+            # 完整响应用于模态框显示（保留换行）
             full_response = r.get('response', '').replace('<', '&lt;').replace('>', '&gt;').replace('\n', '<br>').replace('"', '&quot;')
 
             # 字数统计
             char_count = r.get('char_count', len(r.get('response', '')))
 
+            # 提示词预览
+            prompt_preview = r.get('prompt', '')[:120]
+            if len(r.get('prompt', '')) > 120:
+                prompt_preview += '...'
+
             card = f'''
-            <div class="gallery-item" data-name="{r.get('name', '')}" data-id="{r.get('id', '')}" data-tags="{' '.join(tags)}" data-difficulty="{difficulty}">
-                <div class="icon-bg {bg_class}" style="height: 150px;">
-                    <div class="icon-emoji" style="font-size: 4em;">{icon}</div>
+            <div class="gallery-item writing-card" data-name="{r.get('name', '')}" data-id="{r.get('id', '')}" data-tags="{' '.join(tags)}" data-difficulty="{difficulty}">
+                <!-- 图标头部 -->
+                <div class="icon-bg {bg_class}" style="height: 160px; position: relative;">
+                    <div class="icon-emoji" style="font-size: 4.5em; position: relative; z-index: 2;">{icon}</div>
+                    <div style="position: absolute; bottom: 15px; left: 0; right: 0; text-align: center; z-index: 2;">
+                        <span style="background: rgba(255,255,255,0.95); padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
+                            {category}
+                        </span>
+                    </div>
                 </div>
-                <div class="card-info">
-                    <div class="card-header">
-                        <div class="card-title">{r.get('name', '未命名')}</div>
+
+                <!-- 卡片内容 -->
+                <div class="card-info" style="padding: 24px 20px;">
+                    <!-- 标题行 -->
+                    <div class="card-header" style="margin-bottom: 12px;">
+                        <div class="card-title" style="font-size: 1.15rem; line-height: 1.4;">{r.get('name', '未命名')}</div>
                         <span class="difficulty-badge difficulty-{difficulty}">{difficulty}</span>
                     </div>
-                    <div class="card-category">📁 {category} | 📊 {char_count} 字</div>
-                    <div class="card-tags">{tags_html}</div>
-                    <div class="card-prompt" style="font-size: 0.8rem; color: #666; margin-bottom: 8px; max-height: 40px; overflow: hidden;"><strong>提示:</strong> {r.get('prompt', '')[:80]}...</div>
-                    <div class="card-prompt" style="background: #f8f9fa; padding: 10px; border-radius: 8px; font-size: 0.85rem; max-height: 100px; overflow: hidden;">{response_preview}</div>
-                    <div class="card-actions" style="margin-top: 10px;">
-                        <button class="btn btn-primary" onclick="showWritingModal('{r.get('id', '')}', '{r.get('name', '').replace(chr(39), chr(92)+chr(39))}', '{r.get('prompt', '').replace(chr(39), chr(92)+chr(39)).replace(chr(10), ' ')[:200]}', `{full_response}`)">查看详情</button>
+
+                    <!-- 统计信息 -->
+                    <div style="display: flex; gap: 15px; margin-bottom: 12px; padding: 10px; background: var(--bg-light); border-radius: 8px;">
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 1.3rem; font-weight: 700; color: var(--primary-color);">{char_count}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">字数</div>
+                        </div>
+                        <div style="width: 1px; background: var(--glass-border);"></div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 1.3rem; font-weight: 700; color: var(--accent-color);">{len(tags)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">标签</div>
+                        </div>
+                        <div style="width: 1px; background: var(--glass-border);"></div>
+                        <div style="flex: 1; text-align: center;">
+                            <div style="font-size: 1.3rem; font-weight: 700; color: #10b981;">✓</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted);">完成</div>
+                        </div>
+                    </div>
+
+                    <!-- 标签 -->
+                    <div class="card-tags" style="margin-bottom: 12px;">
+                        {tags_html}
+                    </div>
+
+                    <!-- 提示词预览 -->
+                    <div style="background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 3px solid var(--primary-color);">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; font-weight: 600;">📋 提示词</div>
+                        <div style="font-size: 0.85rem; color: var(--text-main); line-height: 1.5;">{prompt_preview}</div>
+                    </div>
+
+                    <!-- 响应内容预览 -->
+                    <div style="background: linear-gradient(to bottom, #ffffff, #f8f9fa); padding: 14px; border-radius: 10px; border: 1px solid var(--glass-border); margin-bottom: 15px;">
+                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">✨ 响应内容预览</div>
+                        <div style="font-size: 0.9rem; color: var(--text-main); line-height: 1.7; max-height: 105px; overflow: hidden; text-overflow: ellipsis;">{response_preview_html}</div>
+                    </div>
+
+                    <!-- 操作按钮 -->
+                    <div class="card-actions">
+                        <button class="btn btn-primary" onclick="showWritingModal('{r.get('id', '')}', '{r.get('name', '').replace(chr(39), chr(92)+chr(39))}', '{r.get('prompt', '').replace(chr(39), chr(92)+chr(39)).replace(chr(10), ' ')[:200]}', `{full_response}`)" style="width: 100%; justify-content: center; display: flex; align-items: center; gap: 8px;">
+                            <span>📖</span>
+                            <span>查看完整内容</span>
+                        </button>
                     </div>
                 </div>
             </div>

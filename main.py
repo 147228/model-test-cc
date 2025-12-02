@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 AI模型一键测评工具 - 主GUI应用
-支持文生文、文生图测评，一键生成展示网站
+支持代码生成、文生文、文生图测评，一键生成展示网站
 """
 
 import tkinter as tk
@@ -15,6 +15,7 @@ from datetime import datetime
 from test_engine import TestEngine
 from website_generator import WebsiteGenerator
 from prompt_manager import PromptManager
+from prompt_generator_advanced import AdvancedPromptGenerator
 
 
 class AIModelTester:
@@ -30,6 +31,8 @@ class AIModelTester:
         self.text_model = tk.StringVar(value="gemini-3-pro-preview")
         self.image_model = tk.StringVar(value="gemini-3-pro-image-preview")
         self.max_threads = tk.IntVar(value=10)
+        self.enable_thinking = tk.BooleanVar(value=False)  # thinking模式
+        self.max_tokens = tk.IntVar(value=16384)  # 最大输出tokens
 
         # 测试状态
         self.is_running = False
@@ -63,8 +66,8 @@ class AIModelTester:
         ttk.Label(config_frame, text="API Key:").grid(row=1, column=0, sticky=tk.W, pady=2)
         ttk.Entry(config_frame, textvariable=self.api_key, width=60, show="*").grid(row=1, column=1, columnspan=3, sticky=tk.W, pady=2)
 
-        # 文生文模型
-        ttk.Label(config_frame, text="文生文模型:").grid(row=2, column=0, sticky=tk.W, pady=2)
+        # 代码生成模型
+        ttk.Label(config_frame, text="代码生成模型:").grid(row=2, column=0, sticky=tk.W, pady=2)
         ttk.Entry(config_frame, textvariable=self.text_model, width=30).grid(row=2, column=1, sticky=tk.W, pady=2)
 
         # 文生图模型
@@ -75,21 +78,34 @@ class AIModelTester:
         ttk.Label(config_frame, text="并发线程:").grid(row=3, column=0, sticky=tk.W, pady=2)
         ttk.Spinbox(config_frame, from_=1, to=30, textvariable=self.max_threads, width=10).grid(row=3, column=1, sticky=tk.W, pady=2)
 
+        # max_tokens
+        ttk.Label(config_frame, text="最大输出Tokens:").grid(row=3, column=2, sticky=tk.W, pady=2, padx=(20, 0))
+        max_tokens_combo = ttk.Combobox(config_frame, textvariable=self.max_tokens,
+                                        values=[4096, 8192, 16384, 32768, 65536], width=10)
+        max_tokens_combo.grid(row=3, column=3, sticky=tk.W, pady=2)
+
+        # thinking模式
+        ttk.Checkbutton(config_frame, text="启用Thinking模式 (DeepSeek等)",
+                       variable=self.enable_thinking).grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=2)
+
         # 保存配置按钮
-        ttk.Button(config_frame, text="保存配置", command=self.save_config).grid(row=3, column=3, sticky=tk.E, pady=2)
+        ttk.Button(config_frame, text="保存配置", command=self.save_config).grid(row=4, column=3, sticky=tk.E, pady=2)
 
         # 测试选项区
         test_frame = ttk.LabelFrame(main_frame, text="测试选项", padding="10")
         test_frame.pack(fill=tk.X, pady=(0, 10))
 
         self.test_text = tk.BooleanVar(value=True)
+        self.test_writing = tk.BooleanVar(value=True)
         self.test_image = tk.BooleanVar(value=True)
 
-        ttk.Checkbutton(test_frame, text="文生文测评", variable=self.test_text).pack(side=tk.LEFT, padx=10)
+        ttk.Checkbutton(test_frame, text="代码生成测评", variable=self.test_text).pack(side=tk.LEFT, padx=10)
+        ttk.Checkbutton(test_frame, text="文生文测评", variable=self.test_writing).pack(side=tk.LEFT, padx=10)
         ttk.Checkbutton(test_frame, text="文生图测评", variable=self.test_image).pack(side=tk.LEFT, padx=10)
 
         # 提示词管理按钮
         ttk.Button(test_frame, text="提示词管理", command=self.open_prompt_manager).pack(side=tk.RIGHT, padx=10)
+        ttk.Button(test_frame, text="🚀 智能生成", command=self.open_advanced_generator).pack(side=tk.RIGHT, padx=5)
 
         # 控制按钮
         btn_frame = ttk.Frame(main_frame)
@@ -143,7 +159,9 @@ class AIModelTester:
             "api_key": self.api_key.get(),
             "text_model": self.text_model.get(),
             "image_model": self.image_model.get(),
-            "max_threads": self.max_threads.get()
+            "max_threads": self.max_threads.get(),
+            "enable_thinking": self.enable_thinking.get(),
+            "max_tokens": self.max_tokens.get()
         }
         config_path = self.base_dir / "config.json"
         with open(config_path, "w", encoding="utf-8") as f:
@@ -163,6 +181,8 @@ class AIModelTester:
                 self.text_model.set(config.get("text_model", "gemini-3-pro-preview"))
                 self.image_model.set(config.get("image_model", "gemini-3-pro-image-preview"))
                 self.max_threads.set(config.get("max_threads", 10))
+                self.enable_thinking.set(config.get("enable_thinking", False))
+                self.max_tokens.set(config.get("max_tokens", 16384))
                 self.log("配置已加载")
             except Exception as e:
                 self.log(f"加载配置失败: {e}")
@@ -175,7 +195,7 @@ class AIModelTester:
         if not self.api_key.get():
             messagebox.showerror("错误", "请输入API Key")
             return False
-        if not self.test_text.get() and not self.test_image.get():
+        if not self.test_text.get() and not self.test_writing.get() and not self.test_image.get():
             messagebox.showerror("错误", "请至少选择一种测评类型")
             return False
         return True
@@ -211,21 +231,32 @@ class AIModelTester:
                 max_threads=self.max_threads.get(),
                 output_dir=self.output_dir,
                 log_callback=self.log,
-                progress_callback=self.update_progress
+                progress_callback=self.update_progress,
+                enable_thinking=self.enable_thinking.get(),
+                max_tokens=self.max_tokens.get()
             )
 
             total_tasks = 0
             completed = 0
             failed_count = 0
 
-            # 文生文测评
+            # 代码生成测评
             if self.test_text.get() and self.is_running:
-                self.status_label.config(text="正在执行文生文测评...")
+                self.status_label.config(text="正在执行代码生成测评...")
                 text_results = self.test_engine.run_text_tests()
                 completed += len(text_results)
                 text_failed = len([r for r in text_results if not r.get("success", True) or not r.get("html_file")])
                 failed_count += text_failed
-                self.log(f"文生文测评完成: {len(text_results)} 个案例，{text_failed} 个失败/未提取HTML")
+                self.log(f"代码生成测评完成: {len(text_results)} 个案例，{text_failed} 个失败/未提取HTML")
+
+            # 文生文测评
+            if self.test_writing.get() and self.is_running:
+                self.status_label.config(text="正在执行文生文测评...")
+                writing_results = self.test_engine.run_writing_tests()
+                completed += len(writing_results)
+                writing_failed = len([r for r in writing_results if not r.get("success", True)])
+                failed_count += writing_failed
+                self.log(f"文生文测评完成: {len(writing_results)} 个案例，{writing_failed} 个失败")
 
             # 文生图测评
             if self.test_image.get() and self.is_running:
@@ -362,6 +393,10 @@ class AIModelTester:
         """打开提示词管理窗口"""
         PromptManagerWindow(self.root, self.prompt_manager, self.api_url, self.api_key, self.text_model, self.log)
 
+    def open_advanced_generator(self):
+        """打开智能提示词生成窗口"""
+        AdvancedGeneratorWindow(self.root, self.base_dir, self.api_url, self.api_key, self.text_model, self.log)
+
 
 class PromptManagerWindow:
     """提示词管理窗口"""
@@ -395,7 +430,7 @@ class PromptManagerWindow:
 
         # 类型选择
         ttk.Label(toolbar, text="类型:").pack(side=tk.LEFT, padx=(0, 5))
-        type_combo = ttk.Combobox(toolbar, textvariable=self.current_type, values=["text", "image"], state="readonly", width=10)
+        type_combo = ttk.Combobox(toolbar, textvariable=self.current_type, values=["text", "writing", "image"], state="readonly", width=10)
         type_combo.pack(side=tk.LEFT)
         type_combo.bind("<<ComboboxSelected>>", lambda e: self.load_cases())
 
@@ -593,6 +628,234 @@ class PromptManagerWindow:
                 self.window.after(0, lambda: messagebox.showerror("失败", "生成提示词失败"))
 
         threading.Thread(target=do_generate, daemon=True).start()
+
+
+class AdvancedGeneratorWindow:
+    """智能提示词生成窗口"""
+
+    def __init__(self, parent, base_dir, api_url, api_key, model, log_callback):
+        self.base_dir = base_dir
+        self.api_url = api_url
+        self.api_key = api_key
+        self.model = model
+        self.log = log_callback
+
+        # 创建顶层窗口
+        self.window = tk.Toplevel(parent)
+        self.window.title("🚀 智能提示词生成器 v3.0")
+        self.window.geometry("700x550")
+        self.window.transient(parent)
+
+        self.create_ui()
+
+    def create_ui(self):
+        """创建界面"""
+        main_frame = ttk.Frame(self.window, padding="20")
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # 标题
+        title = ttk.Label(main_frame, text="🎨 智能提示词生成器 v3.0", font=("", 16, "bold"))
+        title.pack(pady=(0, 10))
+
+        subtitle = ttk.Label(main_frame, text="多线程并行生成 | 创意设计 | 自动归类",
+                           foreground="gray")
+        subtitle.pack(pady=(0, 20))
+
+        # 生成配置区
+        config_frame = ttk.LabelFrame(main_frame, text="生成配置", padding="15")
+        config_frame.pack(fill=tk.X, pady=(0, 15))
+
+        # 代码生成数量
+        row1 = ttk.Frame(config_frame)
+        row1.pack(fill=tk.X, pady=5)
+        ttk.Label(row1, text="🔨 代码生成:", width=12).pack(side=tk.LEFT)
+        self.code_count = tk.IntVar(value=5)
+        ttk.Spinbox(row1, from_=0, to=30, textvariable=self.code_count, width=8).pack(side=tk.LEFT, padx=5)
+        ttk.Label(row1, text="个", foreground="gray").pack(side=tk.LEFT)
+
+        # 文生文数量
+        row2 = ttk.Frame(config_frame)
+        row2.pack(fill=tk.X, pady=5)
+        ttk.Label(row2, text="✍️ 文生文:", width=12).pack(side=tk.LEFT)
+        self.writing_count = tk.IntVar(value=5)
+        ttk.Spinbox(row2, from_=0, to=30, textvariable=self.writing_count, width=8).pack(side=tk.LEFT, padx=5)
+        ttk.Label(row2, text="个", foreground="gray").pack(side=tk.LEFT)
+
+        # 文生图数量
+        row3 = ttk.Frame(config_frame)
+        row3.pack(fill=tk.X, pady=5)
+        ttk.Label(row3, text="🎨 文生图:", width=12).pack(side=tk.LEFT)
+        self.image_count = tk.IntVar(value=5)
+        ttk.Spinbox(row3, from_=0, to=30, textvariable=self.image_count, width=8).pack(side=tk.LEFT, padx=5)
+        ttk.Label(row3, text="个", foreground="gray").pack(side=tk.LEFT)
+
+        # 策略说明
+        info_frame = ttk.LabelFrame(main_frame, text="💡 生成策略", padding="15")
+        info_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+
+        info_text = scrolledtext.ScrolledText(info_frame, height=10, font=("Consolas", 9), wrap=tk.WORD)
+        info_text.pack(fill=tk.BOTH, expand=True)
+
+        strategy_info = """🔨 代码生成策略:
+• 技术炫技型: 高难度实现 + 视觉震撼 + 单文件完整
+• 实用利他型: 真实需求 + 降低门槛 + 即时可用
+• 反差爽感型: 严肃×娱乐 OR 传统×现代
+• 教育工具型: 教学需求 + 可视化 + 交互演示
+• 创意脑洞型: 荒诞设定 + 认真实现 + 细节完整
+
+✍️ 文生文策略:
+• 专业实用型: 职场需求 + 格式规范 + 即用模板
+• 创意文学型: 文学形式 + 主题深度 + 情感共鸣
+• 知识科普型: 专业知识 + 通俗表达 + 案例丰富
+• 反差创意型: 严肃×轻松 OR 古典×现代
+• 情感治愈型: 情感洞察 + 共鸣场景 + 正能量
+
+🎨 文生图策略:
+• 中文文字炫技: 复杂中文 + 视觉设计 + 文化准确
+• 视觉冲击型: 强烈对比 + 史诗构图 + 戏剧光线
+• 文化融合型: 传统×科技 OR 东方×西方
+• 实用教育型: 教学需求 + 清晰图示 + 专业准确
+• 细节极致型: 超写实 + 光线追踪 + 材质精准
+• 反差脑洞型: 违和组合 + 荒诞认真 + 细节完整
+"""
+        info_text.insert("1.0", strategy_info)
+        info_text.config(state=tk.DISABLED)
+
+        # 按钮区
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(fill=tk.X)
+
+        self.generate_btn = ttk.Button(btn_frame, text="🚀 开始生成", command=self.start_generate)
+        self.generate_btn.pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(btn_frame, text="关闭", command=self.window.destroy).pack(side=tk.RIGHT, padx=5)
+
+    def start_generate(self):
+        """开始生成"""
+        code_count = self.code_count.get()
+        writing_count = self.writing_count.get()
+        image_count = self.image_count.get()
+
+        if code_count == 0 and writing_count == 0 and image_count == 0:
+            messagebox.showwarning("提示", "请至少选择一种类型生成！")
+            return
+
+        if not self.api_key.get():
+            messagebox.showerror("错误", "请先配置API Key！")
+            return
+
+        self.generate_btn.config(state=tk.DISABLED, text="生成中...")
+
+        def do_generate():
+            try:
+                generator = AdvancedPromptGenerator(
+                    self.api_url.get(),
+                    self.api_key.get(),
+                    self.model.get(),
+                    self.base_dir
+                )
+
+                results = generator.generate_all_parallel(
+                    code_count=code_count,
+                    writing_count=writing_count,
+                    image_count=image_count,
+                    log_callback=self.log
+                )
+
+                # 保存到文件
+                self.save_prompts(results)
+
+                self.window.after(0, lambda: self.generate_btn.config(state=tk.NORMAL, text="🚀 开始生成"))
+                self.window.after(0, lambda: messagebox.showinfo(
+                    "成功",
+                    f"生成完成！\n代码: {len(results['code'])} 个\n文生文: {len(results['writing'])} 个\n文生图: {len(results['image'])} 个"
+                ))
+
+            except Exception as e:
+                self.log(f"❌ 生成失败: {str(e)}")
+                self.window.after(0, lambda: self.generate_btn.config(state=tk.NORMAL, text="🚀 开始生成"))
+                self.window.after(0, lambda: messagebox.showerror("失败", f"生成失败:\n{str(e)}"))
+
+        threading.Thread(target=do_generate, daemon=True).start()
+
+    def save_prompts(self, results: dict):
+        """保存生成的提示词到文件"""
+        from prompt_manager import PromptManager
+
+        prompt_manager = PromptManager(self.base_dir)
+
+        # 保存代码生成提示词
+        if results['code']:
+            self.log(f"💾 保存 {len(results['code'])} 个代码生成提示词...")
+            data = prompt_manager.load_cases("text")
+            next_id_num = self._get_next_id_number(data.get("cases", []), "T")
+
+            for idx, prompt in enumerate(results['code']):
+                case = {
+                    "id": f"T{next_id_num + idx:02d}",
+                    "name": prompt.get("name", "未命名"),
+                    "category": prompt.get("category", "未分类"),
+                    "difficulty": prompt.get("difficulty", "中"),
+                    "tags": prompt.get("tags", []),
+                    "icon": prompt.get("icon", "📄"),
+                    "prompt": prompt.get("prompt", "")
+                }
+                data["cases"].append(case)
+
+            prompt_manager.save_cases("text", data)
+            self.log(f"✅ 代码生成提示词已保存")
+
+        # 保存文生文提示词
+        if results['writing']:
+            self.log(f"💾 保存 {len(results['writing'])} 个文生文提示词...")
+            data = prompt_manager.load_cases("writing")
+            next_id_num = self._get_next_id_number(data.get("cases", []), "W")
+
+            for idx, prompt in enumerate(results['writing']):
+                case = {
+                    "id": f"W{next_id_num + idx:02d}",
+                    "name": prompt.get("name", "未命名"),
+                    "category": prompt.get("category", "未分类"),
+                    "difficulty": prompt.get("difficulty", "中"),
+                    "tags": prompt.get("tags", []),
+                    "icon": prompt.get("icon", "📝"),
+                    "prompt": prompt.get("prompt", "")
+                }
+                data["cases"].append(case)
+
+            prompt_manager.save_cases("writing", data)
+            self.log(f"✅ 文生文提示词已保存")
+
+        # 保存文生图提示词
+        if results['image']:
+            self.log(f"💾 保存 {len(results['image'])} 个文生图提示词...")
+            data = prompt_manager.load_cases("image")
+            next_id_num = self._get_next_id_number(data.get("cases", []), "I")
+
+            for idx, prompt in enumerate(results['image']):
+                case = {
+                    "id": f"I{next_id_num + idx:02d}",
+                    "name": prompt.get("name", "未命名"),
+                    "category": prompt.get("category", "未分类"),
+                    "difficulty": prompt.get("difficulty", "中"),
+                    "tags": prompt.get("tags", []),
+                    "icon": prompt.get("icon", "🖼️"),
+                    "prompt": prompt.get("prompt", "")
+                }
+                data["cases"].append(case)
+
+            prompt_manager.save_cases("image", data)
+            self.log(f"✅ 文生图提示词已保存")
+
+    def _get_next_id_number(self, cases: list, prefix: str) -> int:
+        """获取下一个可用ID号码"""
+        ids = []
+        for c in cases:
+            case_id = c.get("id", "")
+            if case_id.startswith(prefix) and case_id[1:].isdigit():
+                ids.append(int(case_id[1:]))
+
+        return max(ids) + 1 if ids else 1
 
 
 def main():
