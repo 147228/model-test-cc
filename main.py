@@ -696,27 +696,36 @@ class AdvancedGeneratorWindow:
         info_text = scrolledtext.ScrolledText(info_frame, height=10, font=("Consolas", 9), wrap=tk.WORD)
         info_text.pack(fill=tk.BOTH, expand=True)
 
-        strategy_info = """🔨 代码生成策略:
+        strategy_info = """🔨 代码生成策略（HTML+CSS+JS单文件）:
 • 技术炫技型: 高难度实现 + 视觉震撼 + 单文件完整
 • 实用利他型: 真实需求 + 降低门槛 + 即时可用
 • 反差爽感型: 严肃×娱乐 OR 传统×现代
 • 教育工具型: 教学需求 + 可视化 + 交互演示
 • 创意脑洞型: 荒诞设定 + 认真实现 + 细节完整
 
-✍️ 文生文策略:
+✍️ 文生文策略（各类写作任务）:
 • 专业实用型: 职场需求 + 格式规范 + 即用模板
 • 创意文学型: 文学形式 + 主题深度 + 情感共鸣
 • 知识科普型: 专业知识 + 通俗表达 + 案例丰富
 • 反差创意型: 严肃×轻松 OR 古典×现代
 • 情感治愈型: 情感洞察 + 共鸣场景 + 正能量
 
-🎨 文生图策略:
+🎨 文生图策略（测试中文渲染能力）:
 • 中文文字炫技: 复杂中文 + 视觉设计 + 文化准确
 • 视觉冲击型: 强烈对比 + 史诗构图 + 戏剧光线
 • 文化融合型: 传统×科技 OR 东方×西方
 • 实用教育型: 教学需求 + 清晰图示 + 专业准确
 • 细节极致型: 超写实 + 光线追踪 + 材质精准
 • 反差脑洞型: 违和组合 + 荒诞认真 + 细节完整
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【语言比例控制】系统自动按照 中文60% : 英文40% 分配
+- 由系统预先判定生成中文或英文提示词
+- 确保整体语言分布符合目标比例
+- 避免AI模型自主决策导致的偏差
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+示例（生成10个）：系统会生成 6个中文 + 4个英文提示词
 """
         info_text.insert("1.0", strategy_info)
         info_text.config(state=tk.DISABLED)
@@ -744,6 +753,44 @@ class AdvancedGeneratorWindow:
             messagebox.showerror("错误", "请先配置API Key！")
             return
 
+        # 确认生成类型和数量
+        types = []
+        if code_count > 0:
+            types.append(f"🔨 代码生成: {code_count}个")
+        if writing_count > 0:
+            types.append(f"✍️ 文生文: {writing_count}个")
+        if image_count > 0:
+            types.append(f"🎨 文生图: {image_count}个")
+
+        confirm_msg = "即将生成以下提示词：\n\n" + "\n".join(types)
+        confirm_msg += "\n\n生成策略：\n"
+        confirm_msg += "• 创意设计（反差感、不落俗套）\n"
+        confirm_msg += "• 系统控制语言比例（中文60% : 英文40%）\n"
+        confirm_msg += "• 自动归类保存\n\n"
+
+        # 计算各类型的中英文数量
+        details = []
+        if code_count > 0:
+            cn = round(code_count * 0.6)
+            en = code_count - cn
+            details.append(f"  代码生成: 中文{cn}个 + 英文{en}个")
+        if writing_count > 0:
+            cn = round(writing_count * 0.6)
+            en = writing_count - cn
+            details.append(f"  文生文: 中文{cn}个 + 英文{en}个")
+        if image_count > 0:
+            cn = round(image_count * 0.6)
+            en = image_count - cn
+            details.append(f"  文生图: 中文{cn}个 + 英文{en}个")
+
+        if details:
+            confirm_msg += "语言分配：\n" + "\n".join(details) + "\n\n"
+
+        confirm_msg += "预计耗时：约1-3分钟\n\n确认开始生成？"
+
+        if not messagebox.askyesno("确认生成", confirm_msg):
+            return
+
         self.generate_btn.config(state=tk.DISABLED, text="生成中...")
 
         def do_generate():
@@ -765,11 +812,21 @@ class AdvancedGeneratorWindow:
                 # 保存到文件
                 self.save_prompts(results)
 
+                # 统计信息
+                total = len(results['code']) + len(results['writing']) + len(results['image'])
+                success_msg = f"✅ 生成完成！共生成 {total} 个提示词\n\n"
+                if len(results['code']) > 0:
+                    success_msg += f"🔨 代码生成: {len(results['code'])} 个\n"
+                if len(results['writing']) > 0:
+                    success_msg += f"✍️ 文生文: {len(results['writing'])} 个\n"
+                if len(results['image']) > 0:
+                    success_msg += f"🎨 文生图: {len(results['image'])} 个\n"
+                success_msg += f"\n💾 已自动保存到测试用例文件\n"
+                success_msg += f"📝 遵循中英文 6:4 比例\n"
+                success_msg += f"🎯 可直接用于测评"
+
                 self.window.after(0, lambda: self.generate_btn.config(state=tk.NORMAL, text="🚀 开始生成"))
-                self.window.after(0, lambda: messagebox.showinfo(
-                    "成功",
-                    f"生成完成！\n代码: {len(results['code'])} 个\n文生文: {len(results['writing'])} 个\n文生图: {len(results['image'])} 个"
-                ))
+                self.window.after(0, lambda: messagebox.showinfo("生成成功", success_msg))
 
             except Exception as e:
                 self.log(f"❌ 生成失败: {str(e)}")

@@ -373,14 +373,29 @@ class AdvancedPromptGenerator:
             lines.append("")
         return "\n".join(lines)
 
-    def _call_api(self, prompt: str, system_prompt: str) -> Optional[str]:
-        """调用API生成提示词"""
+    def _call_api(self, prompt: str, system_prompt: str, language: str = "中文") -> Optional[str]:
+        """调用API生成提示词
+
+        Args:
+            prompt: 用户提示
+            system_prompt: 系统提示
+            language: 生成语言（"中文"或"英文"）
+        """
         endpoint = f"{self.api_url}/chat/completions"
+
+        # 在系统提示词中明确指定语言
+        language_instruction = f"\n\n## 语言要求（重要！）\n请用**{language}**撰写提示词。"
+        if language == "英文":
+            language_instruction += "\nAll prompts must be written in **English**."
+        else:
+            language_instruction += "\n所有提示词必须用**中文**撰写。"
+
+        final_system_prompt = system_prompt + language_instruction
 
         payload = {
             "model": self.model,
             "messages": [
-                {"role": "system", "content": system_prompt},
+                {"role": "system", "content": final_system_prompt},
                 {"role": "user", "content": prompt}
             ],
             "max_tokens": 8192,
@@ -431,76 +446,150 @@ class AdvancedPromptGenerator:
         except json.JSONDecodeError as e:
             raise Exception(f"JSON解析失败: {str(e)}")
 
+    def _split_by_language_ratio(self, total_count: int, cn_ratio: float = 0.6) -> tuple:
+        """按照语言比例分配数量
+
+        Args:
+            total_count: 总数量
+            cn_ratio: 中文比例（默认0.6）
+
+        Returns:
+            (中文数量, 英文数量)
+        """
+        cn_count = round(total_count * cn_ratio)
+        en_count = total_count - cn_count
+        return cn_count, en_count
+
     def generate_code_prompts(self, count: int, log_callback=None) -> List[Dict]:
-        """生成代码生成提示词"""
+        """生成代码生成提示词（系统控制中英文比例）"""
         log = log_callback or print
+
+        # 计算中英文数量（6:4比例）
+        cn_count, en_count = self._split_by_language_ratio(count)
+
+        log(f"🔨 正在生成 {count} 个代码生成提示词（中文{cn_count}个 + 英文{en_count}个）...")
 
         strategies = self._format_strategies(CODE_GEN_STRATEGIES)
         system_prompt = self.CODE_SYSTEM_PROMPT.format(
             strategies=strategies,
-            count=count
+            count="{count}"  # 占位符，后面替换
         )
 
-        log(f"🔨 正在生成 {count} 个代码生成提示词...")
+        all_prompts = []
 
         try:
-            content = self._call_api("", system_prompt)
-            if not content:
-                raise Exception("API返回空内容")
+            # 生成中文提示词
+            if cn_count > 0:
+                log(f"  📝 生成中文提示词 {cn_count} 个...")
+                cn_system = system_prompt.format(count=cn_count)
+                content = self._call_api("", cn_system, language="中文")
+                if content:
+                    cn_prompts = self._extract_json(content)
+                    all_prompts.extend(cn_prompts)
+                    log(f"  ✅ 中文提示词生成完成: {len(cn_prompts)} 个")
 
-            prompts = self._extract_json(content)
-            log(f"✅ 成功生成 {len(prompts)} 个代码提示词")
-            return prompts
+            # 生成英文提示词
+            if en_count > 0:
+                log(f"  📝 生成英文提示词 {en_count} 个...")
+                en_system = system_prompt.format(count=en_count)
+                content = self._call_api("", en_system, language="英文")
+                if content:
+                    en_prompts = self._extract_json(content)
+                    all_prompts.extend(en_prompts)
+                    log(f"  ✅ 英文提示词生成完成: {len(en_prompts)} 个")
+
+            log(f"✅ 代码生成提示词总计: {len(all_prompts)} 个")
+            return all_prompts
 
         except Exception as e:
             log(f"❌ 代码提示词生成失败: {str(e)}")
             return []
 
     def generate_writing_prompts(self, count: int, log_callback=None) -> List[Dict]:
-        """生成文生文提示词"""
+        """生成文生文提示词（系统控制中英文比例）"""
         log = log_callback or print
+
+        # 计算中英文数量（6:4比例）
+        cn_count, en_count = self._split_by_language_ratio(count)
+
+        log(f"✍️ 正在生成 {count} 个文生文提示词（中文{cn_count}个 + 英文{en_count}个）...")
 
         strategies = self._format_strategies(WRITING_STRATEGIES)
         system_prompt = self.WRITING_SYSTEM_PROMPT.format(
             strategies=strategies,
-            count=count
+            count="{count}"
         )
 
-        log(f"✍️ 正在生成 {count} 个文生文提示词...")
+        all_prompts = []
 
         try:
-            content = self._call_api("", system_prompt)
-            if not content:
-                raise Exception("API返回空内容")
+            # 生成中文提示词
+            if cn_count > 0:
+                log(f"  📝 生成中文提示词 {cn_count} 个...")
+                cn_system = system_prompt.format(count=cn_count)
+                content = self._call_api("", cn_system, language="中文")
+                if content:
+                    cn_prompts = self._extract_json(content)
+                    all_prompts.extend(cn_prompts)
+                    log(f"  ✅ 中文提示词生成完成: {len(cn_prompts)} 个")
 
-            prompts = self._extract_json(content)
-            log(f"✅ 成功生成 {len(prompts)} 个文生文提示词")
-            return prompts
+            # 生成英文提示词
+            if en_count > 0:
+                log(f"  📝 生成英文提示词 {en_count} 个...")
+                en_system = system_prompt.format(count=en_count)
+                content = self._call_api("", en_system, language="英文")
+                if content:
+                    en_prompts = self._extract_json(content)
+                    all_prompts.extend(en_prompts)
+                    log(f"  ✅ 英文提示词生成完成: {len(en_prompts)} 个")
+
+            log(f"✅ 文生文提示词总计: {len(all_prompts)} 个")
+            return all_prompts
 
         except Exception as e:
             log(f"❌ 文生文提示词生成失败: {str(e)}")
             return []
 
     def generate_image_prompts(self, count: int, log_callback=None) -> List[Dict]:
-        """生成文生图提示词"""
+        """生成文生图提示词（系统控制中英文比例）"""
         log = log_callback or print
+
+        # 计算中英文数量（6:4比例）
+        cn_count, en_count = self._split_by_language_ratio(count)
+
+        log(f"🎨 正在生成 {count} 个文生图提示词（中文描述{cn_count}个 + 英文描述{en_count}个）...")
 
         strategies = self._format_strategies(IMAGE_GEN_STRATEGIES)
         system_prompt = self.IMAGE_SYSTEM_PROMPT.format(
             strategies=strategies,
-            count=count
+            count="{count}"
         )
 
-        log(f"🎨 正在生成 {count} 个文生图提示词...")
+        all_prompts = []
 
         try:
-            content = self._call_api("", system_prompt)
-            if not content:
-                raise Exception("API返回空内容")
+            # 生成中文场景描述的提示词
+            if cn_count > 0:
+                log(f"  📝 生成中文场景描述 {cn_count} 个...")
+                cn_system = system_prompt.format(count=cn_count)
+                content = self._call_api("", cn_system, language="中文")
+                if content:
+                    cn_prompts = self._extract_json(content)
+                    all_prompts.extend(cn_prompts)
+                    log(f"  ✅ 中文场景描述生成完成: {len(cn_prompts)} 个")
 
-            prompts = self._extract_json(content)
-            log(f"✅ 成功生成 {len(prompts)} 个文生图提示词")
-            return prompts
+            # 生成英文场景描述的提示词
+            if en_count > 0:
+                log(f"  📝 生成英文场景描述 {en_count} 个...")
+                en_system = system_prompt.format(count=en_count)
+                content = self._call_api("", en_system, language="英文")
+                if content:
+                    en_prompts = self._extract_json(content)
+                    all_prompts.extend(en_prompts)
+                    log(f"  ✅ 英文场景描述生成完成: {len(en_prompts)} 个")
+
+            log(f"✅ 文生图提示词总计: {len(all_prompts)} 个")
+            return all_prompts
 
         except Exception as e:
             log(f"❌ 文生图提示词生成失败: {str(e)}")
